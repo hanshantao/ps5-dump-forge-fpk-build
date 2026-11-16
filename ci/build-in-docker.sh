@@ -9,24 +9,38 @@
 #   FORGE_CARGO_DIRECT  1=不写 cargo 镜像配置，直接用 crates.io
 #   FORGE_TAG           上游 git tag（必填）
 #   NODE_VER            node 版本，默认 v22.14.0
+#   FORGE_ARCH          目标 Linux 架构（x86_64 或 arm64；默认自动识别）
 #
 # 输出：/out/ps5-dump-forge-webui（可执行）+ /out/.build-ok
 set -e
 
 TAG="${FORGE_TAG:?缺少 FORGE_TAG}"
 NODE_VER="${NODE_VER:-v22.14.0}"
+FORGE_ARCH="${FORGE_ARCH:-}"
+if [ -z "$FORGE_ARCH" ]; then
+    case "$(uname -m)" in
+        x86_64) FORGE_ARCH=x64 ;;
+        aarch64|arm64) FORGE_ARCH=arm64 ;;
+        *) echo "不支持的宿主架构: $(uname -m)" >&2; exit 1 ;;
+    esac
+fi
+case "$FORGE_ARCH" in
+    x86_64) FORGE_ARCH=x64 ;;
+    x64|arm64) ;;
+    *) echo "不支持的 FORGE_ARCH: $FORGE_ARCH（仅 x86_64/x64/arm64）" >&2; exit 1 ;;
+esac
 NODE_BASE="${FORGE_NODE_BASE:-https://registry.npmmirror.com/-/binary/node}"
 NPM_REG="${FORGE_NPM_REGISTRY:-https://registry.npmmirror.com}"
 REPO_URL="${FORGE_REPO_URL:-}"
 
-echo "==> [1/8] 准备工具链 (tag=$TAG)"
+echo "==> [1/8] 准备工具链 (tag=$TAG, arch=$FORGE_ARCH)"
 mkdir -p /work/node /work/src /work/target /out
-if [ ! -x "/work/node/node-$NODE_VER-linux-x64/bin/node" ]; then
+if [ ! -x "/work/node/node-$NODE_VER-linux-$FORGE_ARCH/bin/node" ]; then
     cd /work/node
-    curl -fsSLO "$NODE_BASE/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz"
-    tar xf "node-$NODE_VER-linux-x64.tar.xz"
+    curl -fsSLO "$NODE_BASE/$NODE_VER/node-$NODE_VER-linux-$FORGE_ARCH.tar.xz"
+    tar xf "node-$NODE_VER-linux-$FORGE_ARCH.tar.xz"
 fi
-export PATH="/work/node/node-$NODE_VER-linux-x64/bin:/usr/local/cargo/bin:$PATH"
+export PATH="/work/node/node-$NODE_VER-linux-$FORGE_ARCH/bin:/usr/local/cargo/bin:$PATH"
 export CARGO_TARGET_DIR=/work/target
 node -v
 rustc --version
@@ -57,8 +71,8 @@ echo "    补丁：$PATCH_EDITS 处改动，$PATCH_FILES/3 个文件带 BASE 声
 echo "==> [4/8] npm 安装依赖"
 cd /work/src/app
 npm ci --registry="$NPM_REG"
-# npm optional deps bug(#4828):rolldown 的平台包要显式装
-npm install --no-save @rolldown/binding-linux-x64-gnu --registry="$NPM_REG"
+# npm optional deps bug(#4828):rolldown 的平台包要按当前架构显式装
+npm install --no-save "@rolldown/binding-linux-$FORGE_ARCH-gnu" --registry="$NPM_REG"
 
 echo "==> [5/8] 构建前端 (build:http)"
 npm run build:http
@@ -84,6 +98,7 @@ chmod 755 /out/ps5-dump-forge-webui
 cat > /out/build-meta.json <<META
 {
   "tag": "$TAG",
+  "arch": "$FORGE_ARCH",
   "patch_edits": $PATCH_EDITS,
   "patch_files": $PATCH_FILES,
   "index_bytes": ${INDEX_BYTES:-0},

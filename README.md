@@ -2,7 +2,7 @@
 
 为飞牛 fnOS 上的 **PS5 Dump Forge** fpk 提供可在线更新的二进制：
 
-**定时跟踪上游 [quer3q/ps5-dump-forge](https://github.com/quer3q/ps5-dump-forge) 的新版本 → 构建含 Web UI 的 Linux 二进制 → 发 Release → 刷新 `feed/manifest.json`。**
+**定时跟踪上游 [quer3q/ps5-dump-forge](https://github.com/quer3q/ps5-dump-forge) 的新版本 → 原生构建含 Web UI 的 Linux x86_64 与 ARM64 二进制 → 发同一 Release → 刷新 `feed/manifest.json`。**
 
 ## 为什么要这个仓库
 
@@ -23,9 +23,9 @@
               ├─ node ci/patch-gateway.mjs      打飞牛网关前缀补丁
               ├─ npm ci && npm run build:http   构建前端（关键，官方漏了这步）
               └─ cargo build --release -p ps5-dump-forge-cli
-                  └─ ci/check-artifact.sh       闸门：无占位串 / glibc≤2.36 / 能 --version
-                      └─ gh release create v<ver>  附二进制
-                          └─ 更新 feed/manifest.json（sha256 + 镜像下载 URL）
+                  └─ ci/check-artifact.sh       闸门：无占位串 / glibc≤2.36 / 架构正确 / 能 --help
+                      └─ gh release create v<ver>  附 x86_64 与 arm64 二进制
+                          └─ 更新 feed/manifest.json（各架构 sha256 + 镜像下载 URL）
 ```
 
 ## 版本号约定
@@ -46,6 +46,7 @@
 | 容器 `rust:1-bookworm` | 与 NAS 上验证过的构建环境一致 |
 | 先 `npm run build:http` 再 `cargo build` | 否则产物是占位页 |
 | 补丁失败必须让构建红 | 宁可没有新版，也不要发"界面点不动"的包 |
+| ARM64 必须原生构建 | 使用 `ubuntu-22.04-arm` runner 和 `linux/arm64` Bookworm 容器，不以 x86 交叉编译或模拟产物冒充 ARM 包 |
 
 ## 被谁消费
 
@@ -55,7 +56,7 @@
 https://raw.githubusercontent.com/<owner>/<repo>/main/feed/manifest.json
 ```
 
-manifest 里 `assets.x86_64.file` 写的是 **Release 资产的镜像 URL**（`https://ghfast.top/https://github.com/...`），因为国内直连 `objects.githubusercontent.com` 不通。镜像换掉只需改这里，不用重发二进制。
+manifest 里 `assets.x86_64`、`assets.arm64` 分别写各自 Release 资产的镜像 URL（`https://ghfast.top/https://github.com/...`），因为国内直连 `objects.githubusercontent.com` 不通。镜像换掉只需改这里，不用重发二进制。
 
 边车装之前会过四道闸门：sha256 → 扫占位串 → 起临时实例探首页 → 原子替换 + 异步重启。
 

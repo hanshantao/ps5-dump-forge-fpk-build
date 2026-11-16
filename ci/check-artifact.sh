@@ -1,17 +1,30 @@
 #!/usr/bin/env bash
 # 产物闸门：宁可构建失败，也不要发出一个跑不起来或没有界面的包。
 #
-# 用法: bash ci/check-artifact.sh out/ps5-dump-forge-webui
+# 用法: bash ci/check-artifact.sh out/ps5-dump-forge-webui [x86_64|arm64]
 #
 # 注意：构建在 docker 里以 root 执行，产物属 root。本脚本在 CI 里以普通用户运行，
 # 不能直接 chmod 原文件，所以所有可执行性检查都在临时副本上做。
 set -euo pipefail
 
 SRC="${1:?用法: check-artifact.sh <二进制路径>}"
+ARCH="${2:-}"
 
 fail() { echo "::error::$*"; exit 1; }
 
 [ -f "$SRC" ] || fail "没有产物 $SRC"
+
+if [ -n "$ARCH" ]; then
+    case "$ARCH" in
+        x86_64) EXPECT_MACHINE="Advanced Micro Devices X86-64" ;;
+        arm64) EXPECT_MACHINE="AArch64" ;;
+        *) fail "未知的目标架构: $ARCH" ;;
+    esac
+    MACHINE=$(readelf -h "$SRC" | sed -n 's/^ *Machine: *//p')
+    [ "$MACHINE" = "$EXPECT_MACHINE" ] || \
+        fail "二进制架构为 ${MACHINE:-未知}，期望 $ARCH ($EXPECT_MACHINE)"
+    echo "二进制架构: $ARCH ($MACHINE)"
+fi
 
 SIZE=$(stat -c%s "$SRC")
 echo "产物大小: $SIZE 字节"
