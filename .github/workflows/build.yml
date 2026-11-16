@@ -153,7 +153,7 @@ jobs:
           cat > notes.md <<EOF
           自动构建自上游 **${{ needs.resolve.outputs.tag }}**，含飞牛统一网关前缀补丁。
 
-          - 可安装包：`ps5-dump-forge-fnos-x86_64.*.fpk` 与 `ps5-dump-forge-fnos-arm64.*.fpk`
+          - 可安装包：ps5-dump-forge-fnos-x86_64.*.fpk 与 ps5-dump-forge-fnos-arm64.*.fpk
           - 原始二进制：Linux x86_64 与 ARM64，要求 glibc ≤ 2.36（Debian 12 / 飞牛 fnOS）
           - 校验：Web UI 已嵌入、二进制架构正确、\`--help\` 可执行
           - 源码：https://github.com/$UPSTREAM/tree/${{ needs.resolve.outputs.tag }}
@@ -162,7 +162,7 @@ jobs:
       - name: 刷新 feed/manifest.json
         run: |
           set -euo pipefail
-          python3 - "${{ needs.resolve.outputs.ver }}" "${{ needs.rel.outputs.x64_url }}" "${{ needs.rel.outputs.x64_sha }}" "${{ needs.rel.outputs.x64_size }}" "${{ needs.rel.outputs.arm_url }}" "${{ needs.rel.outputs.arm_sha }}" "${{ needs.rel.outputs.arm_size }}" "${{ needs.resolve.outputs.tag }}" <<'PY'
+          python3 - "${{ needs.resolve.outputs.ver }}" "${{ steps.rel.outputs.x64_url }}" "${{ steps.rel.outputs.x64_sha }}" "${{ steps.rel.outputs.x64_size }}" "${{ steps.rel.outputs.arm_url }}" "${{ steps.rel.outputs.arm_sha }}" "${{ steps.rel.outputs.arm_size }}" "${{ needs.resolve.outputs.tag }}" <<'PY'
           import json, sys
           ver, xurl, xsha, xsize, aurl, asha, asize, tag = sys.argv[1:]
           p = "feed/manifest.json"
