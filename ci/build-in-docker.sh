@@ -45,8 +45,15 @@ export CARGO_TARGET_DIR=/work/target
 node -v
 rustc --version
 
-export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
-export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
+# GitHub Actions 已明确要求直连 crates.io 时，也必须直连 Rust 的 channel
+# 元数据；否则 cargo 仍会通过 USTC 同步 rust-toolchain.toml 指定的 stable，
+# 网络偶发超时会让 x86_64 构建在真正编译前失败。
+if [ "${FORGE_CARGO_DIRECT:-0}" = "1" ]; then
+    unset RUSTUP_DIST_SERVER RUSTUP_UPDATE_ROOT
+else
+    export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
+    export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
+fi
 
 echo "==> [2/8] 克隆上游源码 $TAG"
 rm -rf /work/src

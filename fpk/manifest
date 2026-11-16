@@ -1,0 +1,16 @@
+appname=ps5dumpforge
+version=__FPK_VERSION__
+display_name=PS5 Dump Forge
+desc=PS5 游戏转储工具
+maintainer=hanshantao
+maintainer_url=https://github.com/hanshantao/ps5-dump-forge-fpk-build
+distributor=hanshantao
+source=thirdparty
+platform=__PLATFORM__
+desktop_uidir=ui
+desktop_applaunchname=ps5dumpforge.main
+service_port=8095
+ctl_stop=true
+disable_authorization_path=false
+os_min_version=1.1.3100
+changelog=包含 Web UI 的原生 PS5 Dump Forge。

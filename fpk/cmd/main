@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -eu
+
+APP="$TRIM_APPDEST/bin/ps5-dump-forge"
+PID_FILE="$TRIM_PKGVAR/ps5-dump-forge.pid"
+LOG_FILE="$TRIM_PKGVAR/ps5-dump-forge.log"
+PORT="${TRIM_SERVICE_PORT:-8095}"
+
+running() {
+  [ -s "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null
+}
+
+start() {
+  if running; then return 0; fi
+  rm -f "$PID_FILE"
+  [ -x "$APP" ] || { echo "缺少应用二进制: $APP" > "$TRIM_TEMP_LOGFILE"; exit 1; }
+  roots=(--root "$TRIM_PKGHOME")
+  if [ -n "${TRIM_DATA_ACCESSIBLE_PATHS:-}" ]; then
+    old_ifs="$IFS"; IFS=":"
+    for path in $TRIM_DATA_ACCESSIBLE_PATHS; do
+      [ -d "$path" ] && roots+=(--root "$path")
+    done
+    IFS="$old_ifs"
+  fi
+  nohup "$APP" serve --port "$PORT" "${roots[@]}" >> "$LOG_FILE" 2>&1 &
+  echo "$!" > "$PID_FILE"
+  sleep 1
+  if ! running; then
+    echo "PS5 Dump Forge 启动失败；请查看 $LOG_FILE" > "$TRIM_TEMP_LOGFILE"
+    exit 1
+  fi
+}
+
+stop() {
+  if ! running; then rm -f "$PID_FILE"; return 0; fi
+  pid="$(cat "$PID_FILE")"
+  kill -TERM "$pid" 2>/dev/null || true
+  for _ in $(seq 1 10); do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+  done
+  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+  rm -f "$PID_FILE"
+}
+
+case "${1:-}" in
+  start) start ;;
+  stop) stop ;;
+  status) running && exit 0; exit 3 ;;
+  *) echo "用法: $0 {start|stop|status}" > "$TRIM_TEMP_LOGFILE"; exit 1 ;;
+esac

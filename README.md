@@ -2,7 +2,7 @@
 
 为飞牛 fnOS 上的 **PS5 Dump Forge** fpk 提供可在线更新的二进制：
 
-**定时跟踪上游 [quer3q/ps5-dump-forge](https://github.com/quer3q/ps5-dump-forge) 的新版本 → 原生构建含 Web UI 的 Linux x86_64 与 ARM64 二进制 → 发同一 Release → 刷新 `feed/manifest.json`。**
+**定时跟踪上游 [quer3q/ps5-dump-forge](https://github.com/quer3q/ps5-dump-forge) 的新版本 → 原生构建含 Web UI 的 Linux x86_64 与 ARM64 二进制 → 封装为可安装的飞牛 `.fpk` → 发同一 Release → 刷新 `feed/manifest.json`。**
 
 ## 为什么要这个仓库
 
@@ -24,8 +24,9 @@
               ├─ npm ci && npm run build:http   构建前端（关键，官方漏了这步）
               └─ cargo build --release -p ps5-dump-forge-cli
                   └─ ci/check-artifact.sh       闸门：无占位串 / glibc≤2.36 / 架构正确 / 能 --help
-                      └─ gh release create v<ver>  附 x86_64 与 arm64 二进制
-                          └─ 更新 feed/manifest.json（各架构 sha256 + 镜像下载 URL）
+                      └─ fnpack build            封装 x86_64 与 arm64 飞牛 FPK
+                          └─ gh release create v<ver>  附 FPK 与原始二进制
+                              └─ 更新 feed/manifest.json（各架构 sha256 + 镜像下载 URL）
 ```
 
 ## 版本号约定

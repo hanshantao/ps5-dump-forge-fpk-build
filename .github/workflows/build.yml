@@ -117,12 +117,28 @@ jobs:
           pattern: ps5-dump-forge-*
           path: artifacts
           merge-multiple: false
+      - name: 封装可安装的飞牛 FPK
+        run: |
+          set -euo pipefail
+          curl -fsSL -o fnpack https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-amd64
+          chmod 755 fnpack
+          mkdir -p packages
+          FNPACK_BIN="$PWD/fnpack" bash ci/build-fpk.sh \
+            artifacts/ps5-dump-forge-x86_64/ps5-dump-forge-webui x86_64 \
+            "${{ needs.resolve.outputs.ver }}" packages
+          FNPACK_BIN="$PWD/fnpack" bash ci/build-fpk.sh \
+            artifacts/ps5-dump-forge-arm64/ps5-dump-forge-webui arm64 \
+            "${{ needs.resolve.outputs.ver }}" packages
+          bash ci/check-fpk.sh packages/ps5-dump-forge-fnos-x86_64.${{ needs.resolve.outputs.ver }}.fpk x86_64
+          bash ci/check-fpk.sh packages/ps5-dump-forge-fnos-arm64.${{ needs.resolve.outputs.ver }}.fpk arm64
       - name: 发双架构 Release
         id: rel
         run: |
           set -euo pipefail
           VER="${{ needs.resolve.outputs.ver }}"
           X64="ps5-dump-forge-x86_64.${VER}"; ARM="ps5-dump-forge-arm64.${VER}"
+          X64_FPK="packages/ps5-dump-forge-fnos-x86_64.${VER}.fpk"
+          ARM_FPK="packages/ps5-dump-forge-fnos-arm64.${VER}.fpk"
           cp artifacts/ps5-dump-forge-x86_64/ps5-dump-forge-webui "$X64"
           cp artifacts/ps5-dump-forge-arm64/ps5-dump-forge-webui "$ARM"
           chmod 755 "$X64" "$ARM"
@@ -137,11 +153,12 @@ jobs:
           cat > notes.md <<EOF
           自动构建自上游 **${{ needs.resolve.outputs.tag }}**，含飞牛统一网关前缀补丁。
 
-          - 产物：Linux x86_64 与 ARM64，要求 glibc ≤ 2.36（Debian 12 / 飞牛 fnOS）
+          - 可安装包：`ps5-dump-forge-fnos-x86_64.*.fpk` 与 `ps5-dump-forge-fnos-arm64.*.fpk`
+          - 原始二进制：Linux x86_64 与 ARM64，要求 glibc ≤ 2.36（Debian 12 / 飞牛 fnOS）
           - 校验：Web UI 已嵌入、二进制架构正确、\`--help\` 可执行
           - 源码：https://github.com/$UPSTREAM/tree/${{ needs.resolve.outputs.tag }}
           EOF
-          gh release create "v${VER}" "$X64" "$ARM" --title "飞牛壳 ${VER}（上游 ${{ needs.resolve.outputs.tag }}）" --notes-file notes.md
+          gh release create "v${VER}" "$X64" "$ARM" "$X64_FPK" "$ARM_FPK" --title "飞牛壳 ${VER}（上游 ${{ needs.resolve.outputs.tag }}）" --notes-file notes.md
       - name: 刷新 feed/manifest.json
         run: |
           set -euo pipefail
